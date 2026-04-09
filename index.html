@@ -18,49 +18,123 @@
     --font-sans: 'Plus Jakarta Sans', sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
   }
-
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { 
-    background-color: var(--bg); 
-    color: var(--text-main); 
-    font-family: var(--font-sans); 
-    line-height: 1.6;
-    background-image: radial-gradient(circle at 50% -20%, #3b82f615, transparent);
-  }
+  body { background-color: var(--bg); color: var(--text-main); font-family: var(--font-sans); background-image: radial-gradient(circle at 50% -20%, #3b82f615, transparent); min-height: 100vh; }
+  header { padding: 2rem 10%; text-align: center; border-bottom: 1px solid var(--border); background: rgba(9, 9, 11, 0.8); backdrop-filter: blur(10px); }
+  h1 { font-weight: 800; font-size: 2.2rem; letter-spacing: -0.04em; text-transform: uppercase; }
+  .container { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem; }
+  .input-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 1.5rem; margin-bottom: 2rem; }
+  textarea { width: 100%; height: 180px; background: #000; color: var(--accent-emerald); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; font-family: var(--font-mono); font-size: 0.95rem; outline: none; resize: none; }
+  .btn-group { display: flex; gap: 0.75rem; margin-top: 1rem; }
+  button { padding: 0.7rem 1.5rem; border-radius: 8px; font-weight: 700; cursor: pointer; border: none; transition: 0.2s; }
+  .btn-primary { background: var(--text-main); color: var(--bg); }
+  .btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
+  .step-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; margin-bottom: 1.2rem; overflow: hidden; }
+  .card-header { padding: 1rem 1.5rem; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 0.75rem; font-weight: 600; }
+  .step-badge { font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; background: var(--accent-blue); color: white; }
+  .output-box { padding: 1.25rem; font-family: var(--font-mono); background: #000; margin: 1rem; border-radius: 10px; color: #d4d4d8; font-size: 0.9rem; }
+  .lhs { color: #818cf8; font-weight: 600; }
+  .arrow { color: var(--text-muted); padding: 0 8px; }
+  .error-box { background: #450a0a; border: 1px solid #991b1b; color: #f87171; padding: 1rem; border-radius: 10px; margin-bottom: 1rem; }
+</style>
+</head>
+<body>
 
-  header { 
-    padding: 2.5rem 10%; 
-    text-align: center;
-    border-bottom: 1px solid var(--border);
-    background: rgba(9, 9, 11, 0.8);
-    backdrop-filter: blur(10px);
-  }
+<header><h1>CFG SIMPLIFIER</h1></header>
 
-  h1 { 
-    font-weight: 800; 
-    font-size: 2.5rem; 
-    letter-spacing: -0.04em; 
-    text-transform: uppercase;
-    background: linear-gradient(to right, #fff, #a1a1aa);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
+<div class="container">
+  <div id="err"></div>
+  <div class="input-panel">
+    <textarea id="inp" spellcheck="false" placeholder="S -> AB | C | e&#10;A -> aA | e"></textarea>
+    <div class="btn-group">
+      <button class="btn-primary" onclick="solve()">Optimize Grammar</button>
+      <button class="btn-secondary" onclick="document.getElementById('inp').value='S -> AB | C | e\nA -> aA | e\nB -> bB | C | D\nC -> AB | a\nD -> dD | E\nE -> e'">Load Complex Example</button>
+    </div>
+  </div>
+  <div id="out"></div>
+</div>
 
-  .container { max-width: 900px; margin: 0 auto; padding: 3rem 1.5rem; }
+<script>
+function solve() {
+  const out = document.getElementById('out');
+  const err = document.getElementById('err');
+  out.innerHTML = ""; err.innerHTML = "";
 
-  .input-panel { 
-    background: var(--surface); 
-    border: 1px solid var(--border); 
-    border-radius: 20px; 
-    padding: 2rem; 
-    margin-bottom: 3rem;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-  }
+  try {
+    const raw = document.getElementById('inp').value;
+    if(!raw.trim()) return;
 
-  textarea { 
-    width: 100%; height: 200px; 
-    background: #000; color: var(--accent-emerald); 
-    border: 1px solid var(--border); border-radius: 12px; 
-    padding: 1.25rem; font-family: var(--font-mono); font-size: 1rem;
-    outline: none; transition: 0.3s;
-    resize
+    // 1. Parse
+    let rules = {}; let order = [];
+    raw.split('\n').forEach(l => {
+      if(!l.includes('->')) return;
+      let [lhs, rhs] = l.split('->').map(s => s.trim());
+      if(!rules[lhs]) { rules[lhs] = []; order.push(lhs); }
+      rhs.split('|').forEach(p => {
+        let clean = p.trim().replace(/e|#|epsilon/g, 'ε');
+        if(!rules[lhs].includes(clean)) rules[lhs].push(clean);
+      });
+    });
+
+    const render = (r, o) => o.map(l => `<div><span class="lhs">${l}</span><span class="arrow">→</span>${r[l].join(' | ')}</div>`).join('');
+    const card = (n, t, c) => `<div class="step-card"><div class="card-header"><span class="step-badge">Step ${n}</span> ${t}</div><div class="output-box">${c}</div></div>`;
+
+    out.innerHTML += card(1, "Initial Grammar", render(rules, order));
+
+    // 2. Null Removal
+    let nullable = new Set();
+    let changed = true;
+    while(changed) {
+      changed = false;
+      for(let lhs in rules) {
+        if(nullable.has(lhs)) continue;
+        for(let p of rules[lhs]) {
+          if(p === 'ε' || [...p].every(c => nullable.has(c))) { nullable.add(lhs); changed = true; }
+        }
+      }
+    }
+
+    let nRules = {};
+    order.forEach(lhs => {
+      let set = new Set();
+      rules[lhs].forEach(p => {
+        if(p === 'ε') return;
+        let combinations = [""];
+        for(let char of p) {
+          let next = [];
+          combinations.forEach(curr => {
+            next.push(curr + char);
+            if(nullable.has(char)) next.push(curr);
+          });
+          combinations = next;
+        }
+        combinations.forEach(c => { if(c) set.add(c); });
+      });
+      nRules[lhs] = Array.from(set);
+    });
+    if(nullable.has(order[0])) nRules[order[0]].unshift('ε');
+    out.innerHTML += card(2, "ε-Production Elimination", render(nRules, order));
+
+    // 3. Unit Removal
+    let uRules = {};
+    order.forEach(lhs => {
+      let closure = new Set([lhs]); let stack = [lhs];
+      while(stack.length) {
+        let cur = stack.pop();
+        (nRules[cur] || []).forEach(p => {
+          if(p.length === 1 && nRules[p] && !closure.has(p)) { closure.add(p); stack.push(p); }
+        });
+      }
+      let final = new Set();
+      closure.forEach(nt => {
+        (nRules[nt] || []).forEach(p => { if(!(p.length === 1 && nRules[p])) final.add(p); });
+      });
+      uRules[lhs] = Array.from(final);
+    });
+    out.innerHTML += card(3, "Unit Production Removal", render(uRules, order));
+
+  } catch(e) { err.innerHTML = `<div class="error-box">Check format: ${e.message}</div>`; }
+}
+</script>
+</body>
+</html>
