@@ -3,314 +3,194 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>CFG Simplifier — Grammar Simplification Tool</title>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@400;600;800&display=swap" rel="stylesheet" />
+<title>CFG Optimization Tool | Theory of Automata</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
 <style>
   :root {
-    --bg: #0d0f14;
-    --surface: #13161e;
-    --card: #1a1e2a;
-    --border: #252a38;
-    --accent: #6ee7b7;
-    --accent2: #818cf8;
-    --accent3: #f59e0b;
-    --accent4: #f87171;
-    --text: #e2e8f0;
-    --muted: #64748b;
-    --font-head: 'Syne', sans-serif;
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --card: #334155;
+    --border: #475569;
+    --accent: #10b981;
+    --accent-blue: #3b82f6;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --font-main: 'Inter', sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
   }
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--text); font-family: var(--font-mono); min-height: 100vh; line-height: 1.6; }
-  header { border-bottom: 1px solid var(--border); padding: 1.5rem 2rem; display: flex; align-items: center; gap: 1rem; background: var(--surface); position: sticky; top: 0; z-index: 100; }
-  .logo-badge { background: var(--accent); color: #0d0f14; font-family: var(--font-head); font-weight: 800; font-size: 0.75rem; padding: 4px 10px; border-radius: 4px; letter-spacing: 0.05em; }
-  header h1 { font-family: var(--font-head); font-size: 1.1rem; font-weight: 600; }
-  header p { font-size: 0.72rem; color: var(--muted); margin-left: auto; }
-  .container { max-width: 1100px; margin: 0 auto; padding: 2rem; }
-  .input-panel { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; }
-  .panel-label { font-family: var(--font-head); font-size: 0.7rem; font-weight: 600; letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; margin-bottom: 0.75rem; }
-  .grammar-input { width: 100%; min-height: 140px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--accent); font-family: var(--font-mono); font-size: 0.9rem; padding: 1rem; resize: vertical; outline: none; transition: border-color 0.2s; line-height: 1.8; }
-  .grammar-input:focus { border-color: var(--accent); }
-  .hint { font-size: 0.72rem; color: var(--muted); margin-top: 0.5rem; }
-  .hint code { color: var(--accent3); background: rgba(245,158,11,0.1); padding: 1px 5px; border-radius: 3px; }
-  .presets { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
-  .preset-btn { background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); font-family: var(--font-mono); font-size: 0.72rem; padding: 5px 12px; cursor: pointer; transition: all 0.2s; }
-  .preset-btn:hover { border-color: var(--accent2); color: var(--accent2); }
-  .actions { display: flex; gap: 0.75rem; margin-top: 1rem; flex-wrap: wrap; }
-  .btn-primary { background: var(--accent); color: #0d0f14; border: none; border-radius: 8px; font-family: var(--font-head); font-weight: 600; font-size: 0.85rem; padding: 10px 24px; cursor: pointer; transition: opacity 0.2s; }
-  .btn-primary:hover { opacity: 0.85; }
-  .btn-secondary { background: transparent; color: var(--muted); border: 1px solid var(--border); border-radius: 8px; font-family: var(--font-mono); font-size: 0.8rem; padding: 10px 20px; cursor: pointer; transition: all 0.2s; }
-  .btn-secondary:hover { border-color: var(--accent4); color: var(--accent4); }
-  .pipeline { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
-  .pipe-step { display: flex; align-items: center; gap: 0.4rem; font-size: 0.72rem; color: var(--muted); transition: color 0.3s; }
-  .pipe-step.active { color: var(--accent); }
-  .pipe-step.done { color: var(--accent2); }
-  .pipe-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); transition: background 0.3s; }
-  .pipe-step.active .pipe-dot { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
-  .pipe-step.done .pipe-dot { background: var(--accent2); }
-  .pipe-arrow { color: var(--border); font-size: 0.9rem; }
-  .steps-grid { display: flex; flex-direction: column; gap: 1.25rem; }
-  .step-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; animation: slideIn 0.4s ease; }
-  @keyframes slideIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-  .step-header { display: flex; align-items: center; gap: 1rem; padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; }
-  .step-number { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.8rem; flex-shrink: 0; }
-  .step-title { font-family: var(--font-head); font-size: 0.95rem; font-weight: 600; flex: 1; }
-  .step-badge { font-size: 0.65rem; padding: 3px 8px; border-radius: 20px; font-weight: 600; letter-spacing: 0.05em; }
-  .step-toggle { color: var(--muted); font-size: 0.8rem; transition: transform 0.2s; }
-  .step-toggle.open { transform: rotate(180deg); }
-  .step-body { padding: 1.25rem 1.5rem; }
-  .step-card.step-useless .step-number { background: rgba(248,113,113,0.15); color: var(--accent4); }
-  .step-card.step-useless .step-header { border-left: 3px solid var(--accent4); }
-  .step-card.step-null .step-number { background: rgba(245,158,11,0.15); color: var(--accent3); }
-  .step-card.step-null .step-header { border-left: 3px solid var(--accent3); }
-  .step-card.step-unit .step-number { background: rgba(129,140,248,0.15); color: var(--accent2); }
-  .step-card.step-unit .step-header { border-left: 3px solid var(--accent2); }
-  .step-card.step-final .step-number { background: rgba(110,231,183,0.15); color: var(--accent); }
-  .step-card.step-final .step-header { border-left: 3px solid var(--accent); }
-  .grammar-display { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.25rem; font-size: 0.88rem; line-height: 2; }
-  .production { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
-  .lhs { color: var(--accent2); font-weight: 600; }
-  .arrow { color: var(--muted); }
-  .rhs-group { color: var(--text); }
-  .sym-terminal { color: var(--accent3); }
-  .sym-nullable { color: var(--accent4); text-decoration: underline dotted; }
-  .explanation { background: rgba(110,231,183,0.05); border: 1px solid rgba(110,231,183,0.15); border-radius: 8px; padding: 1rem 1.25rem; margin-top: 1rem; font-size: 0.82rem; color: #94a3b8; line-height: 1.8; }
-  .explanation strong { color: var(--accent); font-weight: 600; }
-  .detail-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 1rem; }
-  .detail-table th { text-align: left; padding: 6px 12px; color: var(--muted); font-weight: 600; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; border-bottom: 1px solid var(--border); }
-  .detail-table td { padding: 7px 12px; border-bottom: 1px solid rgba(37,42,56,0.5); vertical-align: top; }
-  .tag { display: inline-block; font-size: 0.65rem; padding: 2px 7px; border-radius: 20px; font-weight: 600; margin-right: 3px; }
-  .tag-red { background: rgba(248,113,113,0.15); color: var(--accent4); }
-  .tag-amber { background: rgba(245,158,11,0.15); color: var(--accent3); }
-  .tag-purple { background: rgba(129,140,248,0.15); color: var(--accent2); }
-  .tag-green { background: rgba(110,231,183,0.15); color: var(--accent); }
-  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; }
-  @media (max-width: 600px) { .compare { grid-template-columns: 1fr; } }
-  .compare-label { font-size: 0.68rem; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 0.4rem; font-weight: 600; }
-  .error-box { background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.3); border-radius: 8px; padding: 1rem; color: var(--accent4); font-size: 0.85rem; margin-top: 1rem; }
-  .empty-state { text-align: center; padding: 3rem 1rem; color: var(--muted); font-size: 0.85rem; }
-  .empty-state .big-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.3; }
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: var(--bg); }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-  .divider { height: 1px; background: var(--border); margin: 1rem 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background-color: var(--bg); color: var(--text-primary); font-family: var(--font-main); line-height: 1.6; padding-bottom: 50px; }
+  header { background: #1e293b; border-bottom: 1px solid var(--border); padding: 1.5rem 10%; display: flex; justify-content: space-between; align-items: center; }
+  .logo { font-weight: 700; font-size: 1.25rem; letter-spacing: -0.02em; }
+  .badge { background: var(--accent); color: #064e3b; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+  .container { max-width: 1000px; margin: 0 auto; padding: 2rem; }
+  .input-section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 2rem; margin-bottom: 2rem; }
+  label { display: block; margin-bottom: 0.75rem; color: var(--text-secondary); font-size: 0.875rem; font-weight: 600; }
+  textarea { width: 100%; height: 180px; background: #0f172a; color: var(--accent); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; font-family: var(--font-mono); font-size: 0.95rem; outline: none; transition: border-color 0.2s; }
+  textarea:focus { border-color: var(--accent-blue); }
+  .controls { display: flex; gap: 1rem; margin-top: 1.5rem; }
+  button { padding: 0.75rem 1.5rem; border-radius: 6px; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; }
+  .btn-run { background: var(--accent-blue); color: white; }
+  .btn-run:hover { background: #2563eb; }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-secondary); }
+  .btn-outline:hover { border-color: #fff; color: #fff; }
+  .steps-container { display: grid; gap: 1.5rem; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .card-header { background: rgba(255,255,255,0.05); padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 1rem; }
+  .step-num { width: 24px; height: 24px; background: var(--accent-blue); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; }
+  .output-box { padding: 1.5rem; font-family: var(--font-mono); background: #00000033; margin: 1rem; border-radius: 6px; white-space: pre-wrap; font-size: 0.9rem; }
+  .lhs { color: #818cf8; font-weight: 600; }
+  .arrow { color: var(--text-secondary); padding: 0 8px; }
+  .empty-state { text-align: center; padding: 4rem; color: var(--text-secondary); border: 2px dashed var(--border); border-radius: 12px; }
+  .error-msg { background: #fee2e2; color: #b91c1c; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; font-weight: 600; font-size: 0.9rem; }
 </style>
 </head>
 <body>
+
 <header>
-  <div class="logo-badge">TAFL</div>
-  <h1>CFG Simplification Tool</h1>
-  <p>Theory of Automata &amp; Formal Languages</p>
+  <div class="logo">CFG <span style="color:var(--accent-blue)">Optimizer</span></div>
+  <div class="badge">Academic Stable V1.2</div>
 </header>
+
 <div class="container">
-  <div class="input-panel">
-    <div class="panel-label">Enter Context-Free Grammar</div>
-    <textarea class="grammar-input" id="grammarInput" spellcheck="false" placeholder="S -> aA | B&#10;A -> a | ε&#10;B -> b | C&#10;C -> c"></textarea>
-    <div class="hint">Format: <code>A -> α | β</code> &nbsp; Use <code>ε</code> or <code>#</code> for epsilon. &nbsp; One rule per line.</div>
-    <div class="presets">
-      <span style="font-size:0.72rem;color:var(--muted);align-self:center;">Presets:</span>
-      <button class="preset-btn" onclick="loadPreset(0)">Null + Unit productions</button>
-      <button class="preset-btn" onclick="loadPreset(1)">Useless symbols</button>
-      <button class="preset-btn" onclick="loadPreset(2)">Nullable chain</button>
-      <button class="preset-btn" onclick="loadPreset(3)">All simplifications</button>
-    </div>
-    <div class="actions">
-      <button class="btn-primary" onclick="simplify()">&#9654; Simplify Grammar</button>
-      <button class="btn-secondary" onclick="clearAll()">&#10005; Clear</button>
+  <div id="errorDisplay"></div>
+  <div class="input-section">
+    <label for="grammarInput">Input Context-Free Grammar (Format: S -> aA | B)</label>
+    <textarea id="grammarInput" spellcheck="false" placeholder="S -> aA | B&#10;A -> a | ε&#10;B -> b"></textarea>
+    <div class="controls">
+      <button class="btn-run" onclick="simplify()">Simplify Grammar</button>
+      <button class="btn-outline" onclick="loadSample()">Load Sample</button>
+      <button class="btn-outline" onclick="resetPage()">Clear All</button>
     </div>
   </div>
-  <div class="pipeline" id="pipeline" style="display:none;">
-    <div class="pipe-step" id="pipe-0"><div class="pipe-dot"></div> Parse</div>
-    <div class="pipe-arrow">›</div>
-    <div class="pipe-step" id="pipe-1"><div class="pipe-dot"></div> Nullable</div>
-    <div class="pipe-arrow">›</div>
-    <div class="pipe-step" id="pipe-2"><div class="pipe-dot"></div> Null-Free</div>
-    <div class="pipe-arrow">›</div>
-    <div class="pipe-step" id="pipe-3"><div class="pipe-dot"></div> Unit-Free</div>
-    <div class="pipe-arrow">›</div>
-    <div class="pipe-step" id="pipe-4"><div class="pipe-dot"></div> Useless Removed</div>
-    <div class="pipe-arrow">›</div>
-    <div class="pipe-step" id="pipe-5"><div class="pipe-dot"></div> Simplified ✓</div>
-  </div>
-  <div class="steps-grid" id="stepsGrid">
-    <div class="empty-state">
-      <div class="big-icon">⚙</div>
-      <div>Enter a grammar above and click <strong style="color:var(--accent)">Simplify Grammar</strong></div>
-      <div style="margin-top:0.5rem;font-size:0.75rem;">Supports null production elimination, unit production removal, and useless symbol detection</div>
-    </div>
+  <div id="results" class="steps-container">
+    <div class="empty-state">Detailed simplification steps will be generated here.</div>
   </div>
 </div>
+
 <script>
-const PRESETS=[
-  "S -> aA | B\nA -> a | ε\nB -> b | C\nC -> c",
-  "S -> AB | a\nA -> a\nB -> CD\nC -> c\nD -> d | BD",
-  "S -> aA | bB\nA -> aA | ε\nB -> bB | ε",
-  "S -> AB | ε\nA -> aA | ε\nB -> bB | b\nC -> c\nD -> AB"
-];
-function loadPreset(i){document.getElementById('grammarInput').value=PRESETS[i];}
-function clearAll(){document.getElementById('grammarInput').value='';document.getElementById('stepsGrid').innerHTML='<div class="empty-state"><div class="big-icon">⚙</div><div>Enter a grammar above and click <strong style="color:var(--accent)">Simplify Grammar</strong></div></div>';document.getElementById('pipeline').style.display='none';}
-function parseGrammar(text){
-  const lines=text.trim().split('\n').filter(l=>l.trim());
-  if(!lines.length)throw new Error('Grammar is empty.');
-  const rules={},order=[];
-  for(const line of lines){
-    const parts=line.split('->');
-    if(parts.length<2)throw new Error(`Invalid rule: "${line}". Use format A -> α`);
-    const lhs=parts[0].trim();
-    if(!lhs)throw new Error('Left-hand side cannot be empty.');
-    const rhss=parts[1].split('|').map(r=>r.trim()).filter(r=>r);
-    if(!rules[lhs]){rules[lhs]=[];order.push(lhs);}
-    for(const rhs of rhss){const n=(rhs==='ε'||rhs==='#'||rhs==='epsilon')?'ε':rhs;if(!rules[lhs].includes(n))rules[lhs].push(n);}
-  }
-  return{rules,start:order[0],order};
+function loadSample() {
+  document.getElementById('grammarInput').value = "S -> aA | B\nA -> a | ε\nB -> b | C\nC -> c";
 }
-function cloneGrammar(g){return{rules:Object.fromEntries(Object.entries(g.rules).map(([k,v])=>[k,[...v]])),start:g.start,order:[...g.order]};}
-function findNullable(rules){
-  const nullable=new Set();let changed=true;
-  while(changed){changed=false;for(const[lhs,prods]of Object.entries(rules)){if(nullable.has(lhs))continue;for(const prod of prods){if(prod==='ε'||prod.split(' ').every(s=>nullable.has(s))){nullable.add(lhs);changed=true;break;}}}}
-  return nullable;
+
+function resetPage() {
+  document.getElementById('grammarInput').value = "";
+  document.getElementById('results').innerHTML = '<div class="empty-state">Detailed simplification steps will be generated here.</div>';
+  document.getElementById('errorDisplay').innerHTML = "";
 }
-function isNonTerminal(sym,rules){return rules.hasOwnProperty(sym);}
-function eliminateNull(g){
-  const{rules,start,order}=cloneGrammar(g);
-  const nullable=findNullable(rules);
-  const newRules={};
-  for(const lhs of order){
-    newRules[lhs]=[];
-    for(const prod of rules[lhs]){
-      if(prod==='ε')continue;
-      const syms=prod.split(' ');
-      const nullableIdx=syms.map((s,i)=>nullable.has(s)?i:-1).filter(i=>i>=0);
-      const count=1<<nullableIdx.length;
-      for(let mask=0;mask<count;mask++){
-        const result=syms.filter((s,i)=>{const ni=nullableIdx.indexOf(i);return ni<0||!((mask>>ni)&1);});
-        if(result.length===0)continue;
-        const str=result.join(' ');
-        if(!newRules[lhs].includes(str))newRules[lhs].push(str);
-      }
-    }
-    if(!newRules[lhs].length)delete newRules[lhs];
-  }
-  if(nullable.has(start)){if(!newRules[start])newRules[start]=[];if(!newRules[start].includes('ε'))newRules[start].unshift('ε');}
-  const newOrder=order.filter(k=>newRules[k]);
-  return{rules:newRules,start,order:newOrder,nullable};
+
+function parseGrammar(text) {
+  const lines = text.trim().split('\n').filter(l => l.trim());
+  if (!lines.length) throw new Error('Grammar input cannot be empty.');
+  const rules = {}, order = [];
+  lines.forEach(line => {
+    const parts = line.split('->');
+    if (parts.length < 2) throw new Error(`Incorrect format in line: "${line}". Missing "->"`);
+    const lhs = parts[0].trim();
+    const rhss = parts[1].split('|').map(r => r.trim()).filter(r => r);
+    if (!rules[lhs]) { rules[lhs] = []; order.push(lhs); }
+    rhss.forEach(r => {
+      const normalized = (r === 'ε' || r === '#' || r === 'e' || r === 'epsilon') ? 'ε' : r;
+      if (!rules[lhs].includes(normalized)) rules[lhs].push(normalized);
+    });
+  });
+  return { rules, start: order[0], order };
 }
-function unitClosure(nt,rules){
-  const closure=new Set([nt]);const queue=[nt];
-  while(queue.length){const cur=queue.shift();for(const prod of(rules[cur]||[])){const syms=prod.split(' ');if(syms.length===1&&isNonTerminal(syms[0],rules)&&!closure.has(syms[0])){closure.add(syms[0]);queue.push(syms[0]);}}}
-  return closure;
-}
-function eliminateUnit(g){
-  const{rules,start,order}=cloneGrammar(g);
-  const unitPairs=[];const newRules={};
-  for(const lhs of order){
-    newRules[lhs]=[];
-    const closure=unitClosure(lhs,rules);
-    for(const nt of closure){
-      for(const prod of(rules[nt]||[])){
-        const syms=prod.split(' ');
-        const isUnit=syms.length===1&&isNonTerminal(syms[0],rules);
-        if(!isUnit&&!newRules[lhs].includes(prod))newRules[lhs].push(prod);
-        if(isUnit&&nt!==lhs)unitPairs.push([lhs,nt,syms[0]]);
-      }
-    }
-    if(!newRules[lhs].length)delete newRules[lhs];
-  }
-  const newOrder=order.filter(k=>newRules[k]);
-  return{rules:newRules,start,order:newOrder,unitPairs};
-}
-function findGenerating(rules){
-  const gen=new Set();let changed=true;
-  while(changed){changed=false;for(const[lhs,prods]of Object.entries(rules)){if(gen.has(lhs))continue;for(const prod of prods){if(prod==='ε'){gen.add(lhs);changed=true;break;}const syms=prod.split(' ');if(syms.every(s=>!isNonTerminal(s,rules)||gen.has(s))){gen.add(lhs);changed=true;break;}}}}
-  return gen;
-}
-function findReachable(start,rules){
-  const reach=new Set([start]);const queue=[start];
-  while(queue.length){const cur=queue.shift();for(const prod of(rules[cur]||[])){for(const sym of prod.split(' ')){if(isNonTerminal(sym,rules)&&!reach.has(sym)){reach.add(sym);queue.push(sym);}}}}
-  return reach;
-}
-function removeUseless(g){
-  const{rules,start,order}=cloneGrammar(g);
-  const generating=findGenerating(rules);
-  const nonGenerating=Object.keys(rules).filter(k=>!generating.has(k));
-  for(const nt of nonGenerating)delete rules[nt];
-  for(const lhs of Object.keys(rules)){rules[lhs]=rules[lhs].filter(prod=>prod==='ε'||prod.split(' ').every(s=>!isNonTerminal(s,rules)||generating.has(s)));if(!rules[lhs].length)delete rules[lhs];}
-  const reachable=findReachable(start,rules);
-  const nonReachable=Object.keys(rules).filter(k=>!reachable.has(k));
-  for(const nt of nonReachable)delete rules[nt];
-  const newOrder=order.filter(k=>rules[k]);
-  return{rules,start,order:newOrder,nonGenerating,nonReachable};
-}
-function renderGrammar(rules,order,highlights){
-  if(!order||!order.length)return'<span style="color:var(--muted)">— empty —</span>';
-  highlights=highlights||{};
-  return order.filter(k=>rules[k]).map(lhs=>{
-    const prods=rules[lhs].map(prod=>{
-      return prod.split(' ').map(sym=>{
-        if(highlights.nullable&&highlights.nullable.has(sym))return`<span class="sym-nullable" title="nullable">${sym}</span>`;
-        const isNT=/^[A-Z]/.test(sym);
-        if(!isNT&&sym!=='ε')return`<span class="sym-terminal">${sym}</span>`;
-        return`<span>${sym}</span>`;
-      }).join(' ');
-    }).join(' <span class="arrow">|</span> ');
-    return`<div class="production"><span class="lhs">${lhs}</span><span class="arrow">→</span><span class="rhs-group">${prods}</span></div>`;
+
+function renderGrammar(rules, order) {
+  return order.map(lhs => {
+    if (!rules[lhs] || rules[lhs].length === 0) return '';
+    return `<div style="margin-bottom: 4px;"><span class="lhs">${lhs}</span> <span class="arrow">→</span> ${rules[lhs].join(' | ')}</div>`;
   }).join('');
 }
-function stepCard(num,cls,title,badgeText,badgeClass,body){
-  return`<div class="step-card ${cls}" id="card-${num}"><div class="step-header" onclick="toggleCard(${num})"><div class="step-number">${num}</div><div class="step-title">${title}</div><span class="step-badge ${badgeClass}">${badgeText}</span><span class="step-toggle open" id="toggle-${num}">▼</span></div><div class="step-body" id="body-${num}">${body}</div></div>`;
+
+function createStepCard(num, title, content) {
+  return `<div class="card"><div class="card-header"><div class="step-num">${num}</div><strong>${title}</strong></div><div class="output-box">${content}</div></div>`;
 }
-function toggleCard(n){const body=document.getElementById(`body-${n}`);const tog=document.getElementById(`toggle-${n}`);const hidden=body.style.display==='none';body.style.display=hidden?'':'none';tog.classList.toggle('open',hidden);}
-function setPipe(i,state){document.getElementById(`pipe-${i}`).className='pipe-step '+state;}
-function simplify(){
-  const text=document.getElementById('grammarInput').value;
-  const grid=document.getElementById('stepsGrid');
-  const pipeline=document.getElementById('pipeline');
-  grid.innerHTML='';
-  let g0;
-  try{g0=parseGrammar(text);}catch(e){grid.innerHTML=`<div class="error-box">⚠ Parse error: ${e.message}</div>`;return;}
-  pipeline.style.display='flex';
-  for(let i=0;i<6;i++)setPipe(i,'');
-  setPipe(0,'done');
-  const cards=[];
-  cards.push(stepCard(1,'step-final','Original Grammar','INPUT','tag-green',
-    `<div class="panel-label" style="margin-bottom:0.5rem">Productions</div><div class="grammar-display">${renderGrammar(g0.rules,g0.order)}</div><div class="explanation">Start symbol: <strong>${g0.start}</strong> &nbsp;|&nbsp; Non-terminals: <strong>${g0.order.join(', ')}</strong></div>`
-  ));
-  const nullable=findNullable(g0.rules);
-  setPipe(1,'done');
-  const nullableList=[...nullable].length?[...nullable].join(', '):'None';
-  let nullableRows='';
-  for(const[lhs,prods]of Object.entries(g0.rules)){for(const prod of prods){if(prod==='ε')nullableRows+=`<tr><td><span class="lhs">${lhs}</span></td><td><span style="color:var(--accent4)">ε</span></td><td><span class="tag tag-red">direct ε</span></td></tr>`;}}
-  cards.push(stepCard(2,'step-null','Nullable Symbol Detection',`${nullable.size} found`,'tag-amber',
-    `<div class="grammar-display">${renderGrammar(g0.rules,g0.order,{nullable})}</div><div class="explanation">Nullable symbols can derive <strong>ε</strong> directly or indirectly. Underlined symbols below are nullable.<br>Found: <strong>${nullableList}</strong></div>${nullableRows?`<table class="detail-table"><thead><tr><th>Symbol</th><th>Via</th><th>Type</th></tr></thead><tbody>${nullableRows}</tbody></table>`:''}`
-  ));
-  const g1=eliminateNull(g0);
-  setPipe(2,'done');
-  const nullRemoved=g0.order.some(k=>g0.rules[k].includes('ε'));
-  cards.push(stepCard(3,'step-null','Eliminate Null Productions','ε removed','tag-amber',
-    `<div class="compare"><div><div class="compare-label">Before</div><div class="grammar-display">${renderGrammar(g0.rules,g0.order,{nullable})}</div></div><div><div class="compare-label">After</div><div class="grammar-display">${renderGrammar(g1.rules,g1.order)}</div></div></div><div class="explanation">For each nullable symbol <strong>A</strong>, every production containing <strong>A</strong> is duplicated — once with <strong>A</strong>, once without. All <strong>ε</strong> productions are then removed (except <strong>S → ε</strong> if start was nullable).</div>`
-  ));
-  const g2=eliminateUnit(g1);
-  setPipe(3,'done');
-  let unitRows='';
-  for(const[a,b,c]of g2.unitPairs){unitRows+=`<tr><td><span class="lhs">${a}</span> → <span style="color:var(--accent2)">${c}</span></td><td><span class="tag tag-purple">resolved via ${b}</span></td></tr>`;}
-  cards.push(stepCard(4,'step-unit','Eliminate Unit Productions','A → B removed','tag-purple',
-    `<div class="compare"><div><div class="compare-label">Before</div><div class="grammar-display">${renderGrammar(g1.rules,g1.order)}</div></div><div><div class="compare-label">After</div><div class="grammar-display">${renderGrammar(g2.rules,g2.order)}</div></div></div><div class="explanation">A <strong>unit production</strong> is A → B where both are non-terminals. For each such pair, we add all non-unit productions of B directly to A, then remove A → B.</div>${unitRows?`<table class="detail-table"><thead><tr><th>Unit production</th><th>Resolution</th></tr></thead><tbody>${unitRows}</tbody></table>`:'<div style="font-size:0.8rem;color:var(--muted);margin-top:0.75rem;">No unit productions found — step skipped.</div>'}`
-  ));
-  const g3=removeUseless(g2);
-  setPipe(4,'done');
-  let uselessRows='';
-  for(const sym of(g3.nonGenerating||[])){uselessRows+=`<tr><td><span style="color:var(--accent4)">${sym}</span></td><td><span class="tag tag-red">non-generating</span></td><td>Cannot derive any terminal string</td></tr>`;}
-  for(const sym of(g3.nonReachable||[])){uselessRows+=`<tr><td><span style="color:var(--accent4)">${sym}</span></td><td><span class="tag tag-amber">non-reachable</span></td><td>Not reachable from start symbol</td></tr>`;}
-  cards.push(stepCard(5,'step-useless','Remove Useless Symbols',`${(g3.nonGenerating?.length||0)+(g3.nonReachable?.length||0)} removed`,'tag-red',
-    `<div class="compare"><div><div class="compare-label">Before</div><div class="grammar-display">${renderGrammar(g2.rules,g2.order)}</div></div><div><div class="compare-label">After</div><div class="grammar-display">${renderGrammar(g3.rules,g3.order)}</div></div></div><div class="explanation"><strong>Non-generating:</strong> symbols that cannot derive any terminal string.<br><strong>Non-reachable:</strong> symbols not reachable from the start symbol. Both are removed.</div>${uselessRows?`<table class="detail-table"><thead><tr><th>Symbol</th><th>Type</th><th>Reason</th></tr></thead><tbody>${uselessRows}</tbody></table>`:'<div style="font-size:0.8rem;color:var(--muted);margin-top:0.75rem;">No useless symbols found.</div>'}`
-  ));
-  setPipe(5,'done');
-  const prodCount=Object.values(g3.rules).reduce((a,b)=>a+b.length,0);
-  cards.push(stepCard(6,'step-final','Final Simplified Grammar','✓ Complete','tag-green',
-    `<div class="grammar-display">${renderGrammar(g3.rules,g3.order)}</div><div class="explanation">The grammar is now free of <strong>null productions</strong>, <strong>unit productions</strong>, and <strong>useless symbols</strong>.<br>Non-terminals: <strong>${g3.order.join(', ')||'—'}</strong> &nbsp;|&nbsp; Total productions: <strong>${prodCount}</strong></div><div class="divider"></div><div class="panel-label">Summary of changes</div><table class="detail-table"><thead><tr><th>Step</th><th>Result</th></tr></thead><tbody><tr><td>Nullable symbols found</td><td>${[...nullable].join(', ')||'none'}</td></tr><tr><td>ε-productions removed</td><td>${nullRemoved?'yes':'none found'}</td></tr><tr><td>Unit pairs resolved</td><td>${g2.unitPairs?.length||0}</td></tr><tr><td>Non-generating removed</td><td>${g3.nonGenerating?.join(', ')||'none'}</td></tr><tr><td>Non-reachable removed</td><td>${g3.nonReachable?.join(', ')||'none'}</td></tr></tbody></table>`
-  ));
-  grid.innerHTML=cards.join('');
-  window.scrollTo({top:document.getElementById('pipeline').offsetTop-20,behavior:'smooth'});
+
+// Logic: Find all Nullable Variables
+function findNullable(rules) {
+  const nullable = new Set();
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const [lhs, prods] of Object.entries(rules)) {
+      if (nullable.has(lhs)) continue;
+      for (const prod of prods) {
+        if (prod === 'ε' || [...prod].every(char => nullable.has(char))) {
+          nullable.add(lhs); changed = true; break;
+        }
+      }
+    }
+  }
+  return nullable;
+}
+
+// Logic: Eliminate Null Productions
+function eliminateNull(g) {
+  const nullable = findNullable(g.rules);
+  const newRules = {};
+  g.order.forEach(lhs => {
+    const prods = g.rules[lhs];
+    const resultSet = new Set();
+    prods.forEach(p => {
+      if (p === 'ε') return;
+      function generate(idx, current) {
+        if (idx === p.length) {
+          if (current.length > 0) resultSet.add(current);
+          return;
+        }
+        generate(idx + 1, current + p[idx]);
+        if (nullable.has(p[idx])) generate(idx + 1, current);
+      }
+      generate(0, "");
+    });
+    newRules[lhs] = Array.from(resultSet);
+  });
+  if (nullable.has(g.start)) newRules[g.start].unshift('ε');
+  return { rules: newRules, start: g.start, order: g.order };
+}
+
+// Logic: Eliminate Unit Productions
+function eliminateUnit(g) {
+  const newRules = {};
+  g.order.forEach(lhs => {
+    const closure = new Set([lhs]);
+    const stack = [lhs];
+    while (stack.length > 0) {
+      const current = stack.pop();
+      (g.rules[current] || []).forEach(p => {
+        if (p.length === 1 && g.rules[p] && !closure.has(p)) {
+          closure.add(p); stack.push(p);
+        }
+      });
+    }
+    const nonUnitProds = new Set();
+    closure.forEach(nt => {
+      (g.rules[nt] || []).forEach(p => {
+        if (!(p.length === 1 && g.rules[p])) nonUnitProds.add(p);
+      });
+    });
+    newRules[lhs] = Array.from(nonUnitProds);
+  });
+  return { rules: newRules, start: g.start, order: g.order };
+}
+
+function simplify() {
+  const grid = document.getElementById('results');
+  const errorDiv = document.getElementById('errorDisplay');
+  errorDiv.innerHTML = "";
+  try {
+    const g0 = parseGrammar(document.getElementById('grammarInput').value);
+    const g1 = eliminateNull(g0);
+    const g2 = eliminateUnit(g1);
+    
+    grid.innerHTML = createStepCard(1, "Step 1: Original Context-Free Grammar", renderGrammar(g0.rules, g0.order));
+    grid.innerHTML += createStepCard(2, "Step 2: Grammar after ε-Production Elimination", renderGrammar(g1.rules, g1.order));
+    grid.innerHTML += createStepCard(3, "Step 3: Final Unit-Free Grammar", renderGrammar(g2.rules, g2.order));
+  } catch (e) {
+    errorDiv.innerHTML = `<div class="error-msg">Input Error: ${e.message}</div>`;
+  }
 }
 </script>
 </body>
