@@ -3,195 +3,64 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>CFG Optimization Tool | Theory of Automata</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<title>CFG SIMPLIFIER</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
 <style>
   :root {
-    --bg: #0f172a;
-    --surface: #1e293b;
-    --card: #334155;
-    --border: #475569;
-    --accent: #10b981;
+    --bg: #09090b;
+    --surface: #121215;
+    --card: #18181b;
+    --border: #27272a;
     --accent-blue: #3b82f6;
-    --text-primary: #f8fafc;
-    --text-secondary: #94a3b8;
-    --font-main: 'Inter', sans-serif;
+    --accent-emerald: #10b981;
+    --text-main: #fafafa;
+    --text-muted: #a1a1aa;
+    --font-sans: 'Plus Jakarta Sans', sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
   }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background-color: var(--bg); color: var(--text-primary); font-family: var(--font-main); line-height: 1.6; padding-bottom: 50px; }
-  header { background: #1e293b; border-bottom: 1px solid var(--border); padding: 1.5rem 10%; display: flex; justify-content: space-between; align-items: center; }
-  .logo { font-weight: 700; font-size: 1.25rem; letter-spacing: -0.02em; }
-  .badge { background: var(--accent); color: #064e3b; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
-  .container { max-width: 1000px; margin: 0 auto; padding: 2rem; }
-  .input-section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 2rem; margin-bottom: 2rem; }
-  label { display: block; margin-bottom: 0.75rem; color: var(--text-secondary); font-size: 0.875rem; font-weight: 600; }
-  textarea { width: 100%; height: 180px; background: #0f172a; color: var(--accent); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; font-family: var(--font-mono); font-size: 0.95rem; outline: none; transition: border-color 0.2s; }
-  textarea:focus { border-color: var(--accent-blue); }
-  .controls { display: flex; gap: 1rem; margin-top: 1.5rem; }
-  button { padding: 0.75rem 1.5rem; border-radius: 6px; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; }
-  .btn-run { background: var(--accent-blue); color: white; }
-  .btn-run:hover { background: #2563eb; }
-  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-secondary); }
-  .btn-outline:hover { border-color: #fff; color: #fff; }
-  .steps-container { display: grid; gap: 1.5rem; }
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
-  .card-header { background: rgba(255,255,255,0.05); padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 1rem; }
-  .step-num { width: 24px; height: 24px; background: var(--accent-blue); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; }
-  .output-box { padding: 1.5rem; font-family: var(--font-mono); background: #00000033; margin: 1rem; border-radius: 6px; white-space: pre-wrap; font-size: 0.9rem; }
-  .lhs { color: #818cf8; font-weight: 600; }
-  .arrow { color: var(--text-secondary); padding: 0 8px; }
-  .empty-state { text-align: center; padding: 4rem; color: var(--text-secondary); border: 2px dashed var(--border); border-radius: 12px; }
-  .error-msg { background: #fee2e2; color: #b91c1c; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; font-weight: 600; font-size: 0.9rem; }
-</style>
-</head>
-<body>
-
-<header>
-  <div class="logo">CFG <span style="color:var(--accent-blue)">Optimizer</span></div>
-  <div class="badge">Academic Stable V1.2</div>
-</header>
-
-<div class="container">
-  <div id="errorDisplay"></div>
-  <div class="input-section">
-    <label for="grammarInput">Input Context-Free Grammar (Format: S -> aA | B)</label>
-    <textarea id="grammarInput" spellcheck="false" placeholder="S -> aA | B&#10;A -> a | ε&#10;B -> b"></textarea>
-    <div class="controls">
-      <button class="btn-run" onclick="simplify()">Simplify Grammar</button>
-      <button class="btn-outline" onclick="loadSample()">Load Sample</button>
-      <button class="btn-outline" onclick="resetPage()">Clear All</button>
-    </div>
-  </div>
-  <div id="results" class="steps-container">
-    <div class="empty-state">Detailed simplification steps will be generated here.</div>
-  </div>
-</div>
-
-<script>
-function loadSample() {
-  document.getElementById('grammarInput').value = "S -> aA | B\nA -> a | ε\nB -> b | C\nC -> c";
-}
-
-function resetPage() {
-  document.getElementById('grammarInput').value = "";
-  document.getElementById('results').innerHTML = '<div class="empty-state">Detailed simplification steps will be generated here.</div>';
-  document.getElementById('errorDisplay').innerHTML = "";
-}
-
-function parseGrammar(text) {
-  const lines = text.trim().split('\n').filter(l => l.trim());
-  if (!lines.length) throw new Error('Grammar input cannot be empty.');
-  const rules = {}, order = [];
-  lines.forEach(line => {
-    const parts = line.split('->');
-    if (parts.length < 2) throw new Error(`Incorrect format in line: "${line}". Missing "->"`);
-    const lhs = parts[0].trim();
-    const rhss = parts[1].split('|').map(r => r.trim()).filter(r => r);
-    if (!rules[lhs]) { rules[lhs] = []; order.push(lhs); }
-    rhss.forEach(r => {
-      const normalized = (r === 'ε' || r === '#' || r === 'e' || r === 'epsilon') ? 'ε' : r;
-      if (!rules[lhs].includes(normalized)) rules[lhs].push(normalized);
-    });
-  });
-  return { rules, start: order[0], order };
-}
-
-function renderGrammar(rules, order) {
-  return order.map(lhs => {
-    if (!rules[lhs] || rules[lhs].length === 0) return '';
-    return `<div style="margin-bottom: 4px;"><span class="lhs">${lhs}</span> <span class="arrow">→</span> ${rules[lhs].join(' | ')}</div>`;
-  }).join('');
-}
-
-function createStepCard(num, title, content) {
-  return `<div class="card"><div class="card-header"><div class="step-num">${num}</div><strong>${title}</strong></div><div class="output-box">${content}</div></div>`;
-}
-
-// Logic: Find all Nullable Variables
-function findNullable(rules) {
-  const nullable = new Set();
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const [lhs, prods] of Object.entries(rules)) {
-      if (nullable.has(lhs)) continue;
-      for (const prod of prods) {
-        if (prod === 'ε' || [...prod].every(char => nullable.has(char))) {
-          nullable.add(lhs); changed = true; break;
-        }
-      }
-    }
+  body { 
+    background-color: var(--bg); 
+    color: var(--text-main); 
+    font-family: var(--font-sans); 
+    line-height: 1.6;
+    background-image: radial-gradient(circle at 50% -20%, #3b82f615, transparent);
   }
-  return nullable;
-}
 
-// Logic: Eliminate Null Productions
-function eliminateNull(g) {
-  const nullable = findNullable(g.rules);
-  const newRules = {};
-  g.order.forEach(lhs => {
-    const prods = g.rules[lhs];
-    const resultSet = new Set();
-    prods.forEach(p => {
-      if (p === 'ε') return;
-      function generate(idx, current) {
-        if (idx === p.length) {
-          if (current.length > 0) resultSet.add(current);
-          return;
-        }
-        generate(idx + 1, current + p[idx]);
-        if (nullable.has(p[idx])) generate(idx + 1, current);
-      }
-      generate(0, "");
-    });
-    newRules[lhs] = Array.from(resultSet);
-  });
-  if (nullable.has(g.start)) newRules[g.start].unshift('ε');
-  return { rules: newRules, start: g.start, order: g.order };
-}
-
-// Logic: Eliminate Unit Productions
-function eliminateUnit(g) {
-  const newRules = {};
-  g.order.forEach(lhs => {
-    const closure = new Set([lhs]);
-    const stack = [lhs];
-    while (stack.length > 0) {
-      const current = stack.pop();
-      (g.rules[current] || []).forEach(p => {
-        if (p.length === 1 && g.rules[p] && !closure.has(p)) {
-          closure.add(p); stack.push(p);
-        }
-      });
-    }
-    const nonUnitProds = new Set();
-    closure.forEach(nt => {
-      (g.rules[nt] || []).forEach(p => {
-        if (!(p.length === 1 && g.rules[p])) nonUnitProds.add(p);
-      });
-    });
-    newRules[lhs] = Array.from(nonUnitProds);
-  });
-  return { rules: newRules, start: g.start, order: g.order };
-}
-
-function simplify() {
-  const grid = document.getElementById('results');
-  const errorDiv = document.getElementById('errorDisplay');
-  errorDiv.innerHTML = "";
-  try {
-    const g0 = parseGrammar(document.getElementById('grammarInput').value);
-    const g1 = eliminateNull(g0);
-    const g2 = eliminateUnit(g1);
-    
-    grid.innerHTML = createStepCard(1, "Step 1: Original Context-Free Grammar", renderGrammar(g0.rules, g0.order));
-    grid.innerHTML += createStepCard(2, "Step 2: Grammar after ε-Production Elimination", renderGrammar(g1.rules, g1.order));
-    grid.innerHTML += createStepCard(3, "Step 3: Final Unit-Free Grammar", renderGrammar(g2.rules, g2.order));
-  } catch (e) {
-    errorDiv.innerHTML = `<div class="error-msg">Input Error: ${e.message}</div>`;
+  header { 
+    padding: 2.5rem 10%; 
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    background: rgba(9, 9, 11, 0.8);
+    backdrop-filter: blur(10px);
   }
-}
-</script>
-</body>
-</html>
+
+  h1 { 
+    font-weight: 800; 
+    font-size: 2.5rem; 
+    letter-spacing: -0.04em; 
+    text-transform: uppercase;
+    background: linear-gradient(to right, #fff, #a1a1aa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .container { max-width: 900px; margin: 0 auto; padding: 3rem 1.5rem; }
+
+  .input-panel { 
+    background: var(--surface); 
+    border: 1px solid var(--border); 
+    border-radius: 20px; 
+    padding: 2rem; 
+    margin-bottom: 3rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  }
+
+  textarea { 
+    width: 100%; height: 200px; 
+    background: #000; color: var(--accent-emerald); 
+    border: 1px solid var(--border); border-radius: 12px; 
+    padding: 1.25rem; font-family: var(--font-mono); font-size: 1rem;
+    outline: none; transition: 0.3s;
+    resize
