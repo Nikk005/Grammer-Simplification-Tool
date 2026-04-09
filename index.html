@@ -1,151 +1,122 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>CFG Simplifier</title>
-<style>
-body { background:#0d0f14;color:#e2e8f0;font-family:monospace;padding:20px;}
-textarea{width:100%;height:150px;background:#111;color:#0f0;padding:10px;}
-button{padding:10px;margin-top:10px;}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CFG Simplification Tool</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
 </head>
-
 <body>
+  <div class="bg-grid"></div>
 
-<h2>CFG Simplifier</h2>
+  <header>
+    <div class="logo">
+      <span class="logo-bracket">{</span>CFG<span class="logo-bracket">}</span>
+    </div>
+    <h1>Grammar Simplification Tool</h1>
+    <p class="subtitle">Context-Free Grammar · Step-by-Step Transformer</p>
+  </header>
 
-<textarea id="grammarInput">
-S -> aA | B
-A -> a | ε
-B -> b | C
-C -> c
-</textarea>
+  <main>
+    <!-- INPUT SECTION -->
+    <section class="card input-card">
+      <div class="card-label">01 — INPUT</div>
+      <h2>Enter Your Grammar</h2>
+      <p class="hint">One production per line. Use <code>|</code> for alternatives, <code>ε</code> or <code>eps</code> for epsilon. Start variable is the LHS of the first rule.</p>
 
-<br>
-<button onclick="simplify()">Simplify</button>
+      <div class="input-area">
+        <textarea id="grammarInput" spellcheck="false" placeholder="S → aA | B&#10;A → a | ε&#10;B → b | C&#10;C → c"></textarea>
+        <div class="input-actions">
+          <button class="btn btn-ghost" onclick="loadExample()">Load Example</button>
+          <button class="btn btn-ghost" onclick="clearAll()">Clear</button>
+          <button class="btn btn-primary" onclick="simplify()">Simplify Grammar →</button>
+        </div>
+      </div>
 
-<pre id="output"></pre>
+      <div id="parseError" class="error-box hidden"></div>
+    </section>
 
-<script>
+    <!-- STEPS OUTPUT -->
+    <div id="stepsContainer" class="hidden">
 
-// FIX: tokenizer
-function tokenize(rhs){
-  return rhs.split('').filter(c => c.trim() !== '');
-}
+      <!-- ORIGINAL -->
+      <section class="card step-card" id="step0">
+        <div class="card-label">ORIGINAL</div>
+        <h2>Input Grammar</h2>
+        <div id="originalGrammar" class="grammar-display"></div>
+      </section>
 
-function parseGrammar(text){
-  const rules={}, order=[];
-  const lines=text.trim().split('\n').filter(l=>l.trim());
+      <!-- STEP 1: NULL PRODUCTIONS -->
+      <section class="card step-card" id="step1">
+        <div class="card-label">STEP 01</div>
+        <h2>Remove Null Productions <span class="tag">ε-elimination</span></h2>
+        <div class="step-explanation" id="nullExplanation"></div>
+        <div class="before-after">
+          <div>
+            <div class="ba-label">Before</div>
+            <div id="nullBefore" class="grammar-display small"></div>
+          </div>
+          <div class="arrow-col">→</div>
+          <div>
+            <div class="ba-label">After</div>
+            <div id="nullAfter" class="grammar-display small highlight"></div>
+          </div>
+        </div>
+      </section>
 
-  for(const line of lines){
-    const parts=line.split('->');
-    if(parts.length < 2) continue;
+      <!-- STEP 2: UNIT PRODUCTIONS -->
+      <section class="card step-card" id="step2">
+        <div class="card-label">STEP 02</div>
+        <h2>Remove Unit Productions <span class="tag">chain rules</span></h2>
+        <div class="step-explanation" id="unitExplanation"></div>
+        <div class="before-after">
+          <div>
+            <div class="ba-label">Before</div>
+            <div id="unitBefore" class="grammar-display small"></div>
+          </div>
+          <div class="arrow-col">→</div>
+          <div>
+            <div class="ba-label">After</div>
+            <div id="unitAfter" class="grammar-display small highlight"></div>
+          </div>
+        </div>
+      </section>
 
-    const lhs = parts[0].trim();
-    const rhss = parts[1].split('|').map(r=>r.trim());
+      <!-- STEP 3: USELESS SYMBOLS -->
+      <section class="card step-card" id="step3">
+        <div class="card-label">STEP 03</div>
+        <h2>Remove Useless Symbols <span class="tag">unreachable + non-generating</span></h2>
+        <div class="step-explanation" id="uselessExplanation"></div>
+        <div class="before-after">
+          <div>
+            <div class="ba-label">Before</div>
+            <div id="uselessBefore" class="grammar-display small"></div>
+          </div>
+          <div class="arrow-col">→</div>
+          <div>
+            <div class="ba-label">After</div>
+            <div id="uselessAfter" class="grammar-display small highlight"></div>
+          </div>
+        </div>
+      </section>
 
-    if(!rules[lhs]){
-      rules[lhs]=[];
-      order.push(lhs);
-    }
+      <!-- FINAL RESULT -->
+      <section class="card result-card" id="stepFinal">
+        <div class="card-label">RESULT</div>
+        <h2>Simplified Grammar ✓</h2>
+        <div id="finalGrammar" class="grammar-display final"></div>
+        <div id="languageNote" class="language-note"></div>
+        <button class="btn btn-ghost mt" onclick="copyGrammar()">Copy Result</button>
+      </section>
 
-    for(let rhs of rhss){
-      if(rhs === 'ε' || rhs === '#' || rhs === 'epsilon'){
-        if(!rules[lhs].includes('ε')) rules[lhs].push('ε');
-      } else {
-        const tokens = tokenize(rhs).join(' ');
-        if(!rules[lhs].includes(tokens)) rules[lhs].push(tokens);
-      }
-    }
-  }
+    </div>
+  </main>
 
-  return {rules, start: order[0], order};
-}
+  <footer>
+    <p>CFG Simplification Tool · Built for Theory of Computation</p>
+  </footer>
 
-function findNullable(rules){
-  const nullable = new Set();
-  let changed = true;
-
-  while(changed){
-    changed = false;
-    for(const [lhs, prods] of Object.entries(rules)){
-      if(nullable.has(lhs)) continue;
-
-      for(const prod of prods){
-        if(prod === 'ε'){
-          nullable.add(lhs);
-          changed = true;
-          break;
-        }
-
-        const syms = prod.split(' ');
-        if(syms.every(s => nullable.has(s))){
-          nullable.add(lhs);
-          changed = true;
-          break;
-        }
-      }
-    }
-  }
-
-  return nullable;
-}
-
-function eliminateNull(g){
-  const {rules, start} = g;
-  const nullable = findNullable(rules);
-  const newRules = {};
-
-  for(const lhs in rules){
-    newRules[lhs] = [];
-
-    for(const prod of rules[lhs]){
-      if(prod === 'ε') continue;
-
-      const syms = prod.split(' ');
-      const count = 1 << syms.length;
-
-      for(let mask = 0; mask < count; mask++){
-        let result = [];
-
-        for(let i = 0; i < syms.length; i++){
-          if(nullable.has(syms[i]) && ((mask >> i) & 1)) continue;
-          result.push(syms[i]);
-        }
-
-        if(result.length){
-          const str = result.join(' ');
-          if(!newRules[lhs].includes(str)){
-            newRules[lhs].push(str);
-          }
-        }
-      }
-    }
-  }
-
-  if(nullable.has(start)){
-    if(!newRules[start]) newRules[start] = [];
-    if(!newRules[start].includes('ε')) newRules[start].push('ε');
-  }
-
-  return {rules: newRules, start};
-}
-
-function simplify(){
-  const text = document.getElementById('grammarInput').value;
-  const g = parseGrammar(text);
-  const g1 = eliminateNull(g);
-
-  let out = "";
-
-  for(const lhs in g1.rules){
-    out += lhs + " -> " + g1.rules[lhs].join(" | ") + "\n";
-  }
-
-  document.getElementById('output').textContent = out;
-}
-
-</script>
-
+  <script src="simplify.js"></script>
 </body>
 </html>
