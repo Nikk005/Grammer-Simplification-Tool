@@ -3,278 +3,54 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>CFG Simplifier — Grammar Tool</title>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@600;800&display=swap" rel="stylesheet" />
+<title>CFG Optimization Tool | Theory of Automata</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
 <style>
   :root {
-    --bg: #0a0a0c;
-    --surface: #121215;
-    --card: #18181b;
-    --border: rgba(255, 255, 255, 0.08);
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --card: #334155;
+    --border: #475569;
     --accent: #10b981;
-    --accent-glow: rgba(16, 185, 129, 0.15);
-    --accent2: #6366f1;
-    --accent3: #f59e0b;
-    --accent4: #f87171;
-    --text: #f4f4f5;
-    --muted: #71717a;
-    --font-head: 'Syne', sans-serif;
+    --accent-blue: #3b82f6;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --font-main: 'Inter', sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
   }
 
-  /* Reset & Base Vibes */
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html { scroll-behavior: smooth; }
-  
   body { 
-    background-color: var(--bg);
-    /* Subtle background glow */
-    background-image: 
-      radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.08) 0px, transparent 50%),
-      radial-gradient(at 100% 0%, rgba(16, 185, 129, 0.08) 0px, transparent 50%);
-    color: var(--text); 
-    font-family: var(--font-mono); 
+    background-color: var(--bg); 
+    color: var(--text-primary); 
+    font-family: var(--font-main); 
     line-height: 1.6;
-    min-height: 100vh;
+    padding-bottom: 50px;
   }
 
-  /* Glassmorphism Header */
   header { 
+    background: #1e293b; 
     border-bottom: 1px solid var(--border); 
-    padding: 1rem 2rem; 
+    padding: 1.5rem 10%; 
     display: flex; 
-    align-items: center; 
-    gap: 1rem; 
-    background: rgba(18, 18, 21, 0.8);
-    backdrop-filter: blur(12px);
-    position: sticky; 
-    top: 0; 
-    z-index: 100; 
-  }
-  
-  .logo-badge { 
-    background: var(--accent); 
-    color: #000; 
-    font-family: var(--font-head); 
-    font-weight: 800; 
-    font-size: 0.7rem; 
-    padding: 4px 8px; 
-    border-radius: 6px; 
-  }
-  
-  header h1 { font-family: var(--font-head); font-size: 1.1rem; }
-  header p { font-size: 0.7rem; color: var(--muted); margin-left: auto; }
-
-  .container { max-width: 900px; margin: 0 auto; padding: 3rem 1.5rem; }
-
-  /* Input Section */
-  .input-panel { 
-    background: var(--card); 
-    border: 1px solid var(--border); 
-    border-radius: 20px; 
-    padding: 2rem; 
-    margin-bottom: 2.5rem; 
-    box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-    transition: border-color 0.3s ease;
-  }
-  
-  .input-panel:focus-within { border-color: var(--accent2); }
-
-  .panel-label { 
-    font-family: var(--font-head); 
-    font-size: 0.75rem; 
-    font-weight: 600; 
-    color: var(--muted); 
-    text-transform: uppercase; 
-    margin-bottom: 1rem;
-    letter-spacing: 0.1em;
+    justify-content: space-between; 
+    align-items: center;
   }
 
-  .grammar-input { 
-    width: 100%; 
-    min-height: 160px; 
-    background: #000; 
+  .logo { font-weight: 700; font-size: 1.25rem; letter-spacing: -0.02em; }
+  .badge { background: var(--accent); color: #064e3b; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+
+  .container { max-width: 1000px; margin: 0 auto; padding: 2rem; }
+
+  .input-section { 
+    background: var(--surface); 
     border: 1px solid var(--border); 
     border-radius: 12px; 
-    color: var(--accent); 
-    font-family: var(--font-mono); 
-    font-size: 1rem; 
-    padding: 1.25rem; 
-    resize: vertical; 
-    outline: none; 
-    transition: all 0.2s; 
-    line-height: 1.6;
-  }
-  
-  .grammar-input:focus { border-color: var(--accent); box-shadow: 0 0 15px var(--accent-glow); }
-
-  .presets { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 1.5rem 0; }
-  .preset-btn { 
-    background: rgba(255,255,255,0.03); 
-    border: 1px solid var(--border); 
-    border-radius: 8px; 
-    color: var(--muted); 
-    font-family: var(--font-mono); 
-    font-size: 0.75rem; 
-    padding: 6px 14px; 
-    cursor: pointer; 
-    transition: all 0.2s; 
-  }
-  .preset-btn:hover { background: var(--accent2); color: #fff; border-color: var(--accent2); }
-
-  /* Action Buttons */
-  .actions { display: flex; gap: 1rem; }
-  .btn-primary { 
-    background: var(--accent); 
-    color: #000; 
-    border: none; 
-    border-radius: 10px; 
-    font-family: var(--font-head); 
-    font-weight: 800; 
-    font-size: 0.9rem; 
-    padding: 14px 28px; 
-    cursor: pointer; 
-    transition: all 0.2s;
-    text-transform: uppercase;
-  }
-  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 20px var(--accent-glow); opacity: 0.9; }
-
-  /* Pipeline UI */
-  .pipeline { 
-    display: flex; 
-    align-items: center; 
-    justify-content: space-between;
-    background: var(--surface);
-    padding: 1rem 2rem;
-    border-radius: 100px;
-    border: 1px solid var(--border);
+    padding: 2rem; 
     margin-bottom: 2rem;
   }
-  
-  .pipe-step { font-size: 0.7rem; color: var(--muted); display: flex; align-items: center; gap: 0.5rem; }
-  .pipe-step.done { color: var(--accent); font-weight: 600; }
-  .pipe-dot { width: 6px; height: 6px; background: var(--border); border-radius: 50%; }
-  .pipe-step.done .pipe-dot { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
 
-  /* Step Cards */
-  .steps-grid { display: flex; flex-direction: column; gap: 1.5rem; }
-  .step-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; animation: slideIn 0.5s ease backwards; }
-  
-  @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  label { display: block; margin-bottom: 0.75rem; color: var(--text-secondary); font-size: 0.875rem; font-weight: 600; }
 
-  .step-header { display: flex; align-items: center; gap: 1rem; padding: 1.25rem 1.5rem; cursor: pointer; background: rgba(255,255,255,0.02); }
-  .step-number { width: 32px; height: 32px; background: var(--border); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 800; color: var(--text); }
-  .step-title { font-family: var(--font-head); font-weight: 600; flex: 1; font-size: 1rem; }
-  
-  .grammar-display { background: #000; border-radius: 10px; padding: 1.5rem; border: 1px solid var(--border); }
-  .production { margin-bottom: 0.4rem; }
-  .lhs { color: var(--accent2); font-weight: 600; }
-  .sym-terminal { color: var(--accent3); }
-  .explanation { font-size: 0.85rem; color: var(--muted); margin-top: 1rem; border-left: 2px solid var(--accent); padding-left: 1rem; }
-
-  /* Table Style */
-  .detail-table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.8rem; }
-  .detail-table th { text-align: left; color: var(--muted); padding: 10px; border-bottom: 1px solid var(--border); }
-  .detail-table td { padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.03); }
-
-  .tag { font-size: 0.65rem; padding: 2px 8px; border-radius: 4px; background: var(--border); color: var(--text); font-weight: 600; }
-
-  .empty-state { text-align: center; padding: 5rem 0; color: var(--muted); }
-  .empty-state .big-icon { font-size: 4rem; margin-bottom: 1rem; display: block; filter: grayscale(1); opacity: 0.2; }
-
-  @media (max-width: 600px) {
-    .pipeline { display: none; }
-    header p { display: none; }
-  }
-</style>
-</head>
-<body>
-
-<header>
-  <div class="logo-badge">TAFL</div>
-  <h1>CFG Simplifier</h1>
-  <p>Computer Architecture Prep</p>
-</header>
-
-<div class="container">
-  <div class="input-panel">
-    <div class="panel-label">Enter Context-Free Grammar</div>
-    <textarea class="grammar-input" id="grammarInput" spellcheck="false" placeholder="S -> aA | B&#10;A -> a | ε&#10;B -> b | C&#10;C -> c"></textarea>
-    
-    <div class="presets">
-      <button class="preset-btn" onclick="loadPreset(0)">Null + Unit</button>
-      <button class="preset-btn" onclick="loadPreset(1)">Useless Symbols</button>
-      <button class="preset-btn" onclick="loadPreset(2)">All Steps</button>
-    </div>
-
-    <div class="actions">
-      <button class="btn-primary" onclick="simplify()">Run Simplification</button>
-      <button class="preset-btn" onclick="clearAll()" style="padding: 14px 20px;">Clear</button>
-    </div>
-  </div>
-
-  <div class="pipeline" id="pipeline" style="display:none;">
-    <div class="pipe-step" id="pipe-0"><div class="pipe-dot"></div> Parse</div>
-    <div class="pipe-step" id="pipe-1"><div class="pipe-dot"></div> Nullable</div>
-    <div class="pipe-step" id="pipe-2"><div class="pipe-dot"></div> Unit-Free</div>
-    <div class="pipe-step" id="pipe-3"><div class="pipe-dot"></div> Cleaned</div>
-  </div>
-
-  <div class="steps-grid" id="stepsGrid">
-    <div class="empty-state">
-      <span class="big-icon">⚡</span>
-      <div>Waiting for grammar input, Dawg...</div>
-    </div>
-  </div>
-</div>
-
-<script>
-// --- YOUR ORIGINAL LOGIC (MINIFIED & CLEANED) ---
-const PRESETS=["S -> aA | B\nA -> a | ε\nB -> b | C\nC -> c","S -> AB | a\nA -> a\nB -> CD\nC -> c\nD -> d | BD","S -> AB | ε\nA -> aA | ε\nB -> bB | b\nC -> c\nD -> AB"];
-function loadPreset(i){document.getElementById('grammarInput').value=PRESETS[i];}
-function clearAll(){document.getElementById('grammarInput').value='';document.getElementById('stepsGrid').innerHTML='<div class="empty-state"><span class="big-icon">⚡</span><div>Waiting for grammar input, Dawg...</div></div>';document.getElementById('pipeline').style.display='none';}
-
-function parseGrammar(text){
-  const lines=text.trim().split('\n').filter(l=>l.trim());
-  if(!lines.length)throw new Error('Grammar is empty.');
-  const rules={},order=[];
-  for(const line of lines){
-    const parts=line.split('->');
-    if(parts.length<2)throw new Error(`Invalid rule format at: ${line}`);
-    const lhs=parts[0].trim();
-    const rhss=parts[1].split('|').map(r=>r.trim()).filter(r=>r);
-    if(!rules[lhs]){rules[lhs]=[];order.push(lhs);}
-    rhss.forEach(r=>{const n=(r==='ε'||r==='#'||r==='epsilon')?'ε':r;if(!rules[lhs].includes(n))rules[lhs].push(n);});
-  }
-  return{rules,start:order[0],order};
-}
-
-function cloneGrammar(g){return{rules:Object.fromEntries(Object.entries(g.rules).map(([k,v])=>[k,[...v]])),start:g.start,order:[...g.order]};}
-
-function findNullable(rules){
-  const nullable=new Set();let changed=true;
-  while(changed){changed=false;for(const[lhs,prods]of Object.entries(rules)){if(nullable.has(lhs))continue;for(const prod of prods){if(prod==='ε'||prod.split(' ').every(s=>nullable.has(s))){nullable.add(lhs);changed=true;break;}}}}
-  return nullable;
-}
-
-function eliminateNull(g){
-  const{rules,start,order}=cloneGrammar(g);const nullable=findNullable(rules);const newRules={};
-  for(const lhs of order){
-    newRules[lhs]=[];
-    for(const prod of rules[lhs]){
-      if(prod==='ε')continue;
-      const syms=prod.split(' ');
-      const nullableIdx=syms.map((s,i)=>nullable.has(s)?i:-1).filter(i=>i>=0);
-      for(let mask=0;mask<(1<<nullableIdx.length);mask++){
-        const res=syms.filter((s,i)=>{const ni=nullableIdx.indexOf(i);return ni<0||!((mask>>ni)&1);});
-        if(res.length>0 && !newRules[lhs].includes(res.join(' '))) newRules[lhs].push(res.join(' '));
-      }
-    }
-  }
-  if(nullable.has(start)){if(!newRules[start].includes('ε'))newRules[start].unshift('ε');}
-  return{rules:newRules,start,order:order.filter(k=>newRules[k]),nullable};
-}
-
-function eliminateUnit(g){
-  const{rules,start,order}=cloneGrammar(g);const newRules={};
-  const isNT=(s)=>rules.hasOwnProperty(s);
+  textarea { 
+    width: 100%; height
