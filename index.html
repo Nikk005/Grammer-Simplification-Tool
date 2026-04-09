@@ -20,37 +20,168 @@
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { 
-    background-color: var(--bg); 
-    color: var(--text-primary); 
-    font-family: var(--font-main); 
-    line-height: 1.6;
-    padding-bottom: 50px;
-  }
-
-  header { 
-    background: #1e293b; 
-    border-bottom: 1px solid var(--border); 
-    padding: 1.5rem 10%; 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center;
-  }
-
+  body { background-color: var(--bg); color: var(--text-primary); font-family: var(--font-main); line-height: 1.6; padding-bottom: 50px; }
+  header { background: #1e293b; border-bottom: 1px solid var(--border); padding: 1.5rem 10%; display: flex; justify-content: space-between; align-items: center; }
   .logo { font-weight: 700; font-size: 1.25rem; letter-spacing: -0.02em; }
   .badge { background: var(--accent); color: #064e3b; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
-
   .container { max-width: 1000px; margin: 0 auto; padding: 2rem; }
-
-  .input-section { 
-    background: var(--surface); 
-    border: 1px solid var(--border); 
-    border-radius: 12px; 
-    padding: 2rem; 
-    margin-bottom: 2rem;
-  }
-
+  .input-section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 2rem; margin-bottom: 2rem; }
   label { display: block; margin-bottom: 0.75rem; color: var(--text-secondary); font-size: 0.875rem; font-weight: 600; }
+  textarea { width: 100%; height: 180px; background: #0f172a; color: var(--accent); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; font-family: var(--font-mono); font-size: 0.95rem; outline: none; }
+  .controls { display: flex; gap: 1rem; margin-top: 1.5rem; }
+  button { padding: 0.75rem 1.5rem; border-radius: 6px; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; }
+  .btn-run { background: var(--accent-blue); color: white; }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-secondary); }
+  .steps-container { display: grid; gap: 1.5rem; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .card-header { background: rgba(255,255,255,0.05); padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 1rem; }
+  .step-num { width: 24px; height: 24px; background: var(--accent-blue); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; }
+  .output-box { padding: 1.5rem; font-family: var(--font-mono); background: #00000033; margin: 1rem; border-radius: 6px; white-space: pre-wrap; font-size: 0.9rem; }
+  .lhs { color: #818cf8; font-weight: 600; }
+  .arrow { color: var(--text-secondary); padding: 0 8px; }
+  .empty-state { text-align: center; padding: 4rem; color: var(--text-secondary); border: 2px dashed var(--border); border-radius: 12px; }
+  .error-msg { background: #fee2e2; color: #b91c1c; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; font-weight: 600; }
+</style>
+</head>
+<body>
 
-  textarea { 
-    width: 100%; height
+<header>
+  <div class="logo">CFG <span style="color:var(--accent-blue)">Optimizer</span></div>
+  <div class="badge">Academic Edition</div>
+</header>
+
+<div class="container">
+  <div id="errorDisplay"></div>
+  <div class="input-section">
+    <label for="grammarInput">Input Grammar (Format: S -> aA | B)</label>
+    <textarea id="grammarInput" placeholder="S -> aA | B&#10;A -> a | ε&#10;B -> b"></textarea>
+    <div class="controls">
+      <button class="btn-run" onclick="simplify()">Simplify Grammar</button>
+      <button class="btn-outline" onclick="loadSample()">Load Sample</button>
+      <button class="btn-outline" onclick="resetPage()">Clear All</button>
+    </div>
+  </div>
+  <div id="results" class="steps-container">
+    <div class="empty-state">Grammar processing results will appear here.</div>
+  </div>
+</div>
+
+<script>
+function loadSample() {
+  document.getElementById('grammarInput').value = "S -> aA | B\nA -> a | ε\nB -> b | C\nC -> c";
+}
+
+function resetPage() {
+  document.getElementById('grammarInput').value = "";
+  document.getElementById('results').innerHTML = '<div class="empty-state">Grammar processing results will appear here.</div>';
+  document.getElementById('errorDisplay').innerHTML = "";
+}
+
+function parseGrammar(text) {
+  const lines = text.trim().split('\n').filter(l => l.trim());
+  if (!lines.length) throw new Error('Input is empty.');
+  const rules = {}, order = [];
+  lines.forEach(line => {
+    const parts = line.split('->');
+    if (parts.length < 2) throw new Error(`Invalid line: ${line}`);
+    const lhs = parts[0].trim();
+    const rhss = parts[1].split('|').map(r => r.trim()).filter(r => r);
+    if (!rules[lhs]) { rules[lhs] = []; order.push(lhs); }
+    rhss.forEach(r => {
+      const n = (r === 'ε' || r === '#' || r === 'epsilon') ? 'ε' : r;
+      if (!rules[lhs].includes(n)) rules[lhs].push(n);
+    });
+  });
+  return { rules, start: order[0], order };
+}
+
+function renderGrammar(rules, order) {
+  return order.map(lhs => `<div class="production"><span class="lhs">${lhs}</span> <span class="arrow">→</span> ${rules[lhs].join(' | ')}</div>`).join('');
+}
+
+function createStepCard(num, title, content) {
+  return `<div class="card"><div class="card-header"><div class="step-num">${num}</div><strong>${title}</strong></div><div class="output-box">${content}</div></div>`;
+}
+
+// --- CORE LOGIC ---
+function findNullable(rules) {
+  const nullable = new Set(); let changed = true;
+  while (changed) {
+    changed = false;
+    for (const [lhs, prods] of Object.entries(rules)) {
+      if (nullable.has(lhs)) continue;
+      for (const prod of prods) {
+        if (prod === 'ε' || prod.split(' ').every(s => nullable.has(s))) {
+          nullable.add(lhs); changed = true; break;
+        }
+      }
+    }
+  }
+  return nullable;
+}
+
+function eliminateNull(g) {
+  const rules = JSON.parse(JSON.stringify(g.rules));
+  const nullable = findNullable(rules);
+  const newRules = {};
+  for (const lhs of g.order) {
+    newRules[lhs] = [];
+    for (const prod of rules[lhs]) {
+      if (prod === 'ε') continue;
+      const syms = prod.split(' ');
+      const nIdx = syms.map((s, i) => nullable.has(s) ? i : -1).filter(i => i >= 0);
+      for (let mask = 0; mask < (1 << nIdx.length); mask++) {
+        const res = syms.filter((s, i) => { const ni = nIdx.indexOf(i); return ni < 0 || !((mask >> ni) & 1); });
+        if (res.length > 0) {
+          const s = res.join(' ');
+          if (!newRules[lhs].includes(s)) newRules[lhs].push(s);
+        }
+      }
+    }
+  }
+  if (nullable.has(g.start)) newRules[g.start].unshift('ε');
+  return { rules: newRules, start: g.start, order: g.order.filter(k => newRules[k]) };
+}
+
+function eliminateUnit(g) {
+  const rules = g.rules;
+  const newRules = {};
+  for (const lhs of g.order) {
+    newRules[lhs] = [];
+    const closure = new Set([lhs]), q = [lhs];
+    while (q.length) {
+      const cur = q.shift();
+      for (const p of (rules[cur] || [])) {
+        if (p.length === 1 && rules[p] && !closure.has(p)) {
+          closure.add(p); q.push(p);
+        }
+      }
+    }
+    for (const nt of closure) {
+      for (const p of (rules[nt] || [])) {
+        if (!(p.length === 1 && rules[p]) && !newRules[lhs].includes(p)) newRules[lhs].push(p);
+      }
+    }
+  }
+  return { rules: newRules, start: g.start, order: g.order.filter(k => newRules[k]) };
+}
+
+function simplify() {
+  const grid = document.getElementById('results');
+  const errorDiv = document.getElementById('errorDisplay');
+  errorDiv.innerHTML = "";
+  try {
+    const g0 = parseGrammar(document.getElementById('grammarInput').value);
+    const g1 = eliminateNull(g0);
+    const g2 = eliminateUnit(g1);
+    
+    grid.innerHTML = createStepCard(1, "Parsed Grammar", renderGrammar(g0.rules, g0.order));
+    grid.innerHTML += createStepCard(2, "ε-Production Removal", renderGrammar(g1.rules, g1.order));
+    grid.innerHTML += createStepCard(3, "Final Simplified Form", renderGrammar(g2.rules, g2.order));
+  } catch (e) {
+    errorDiv.innerHTML = `<div class="error-msg">Error: ${e.message}</div>`;
+  }
+}
+</script>
+</body>
+</html>
