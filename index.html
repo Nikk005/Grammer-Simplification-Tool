@@ -1,46 +1,151 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>CFG Simplifier — Grammar Simplification Tool</title>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@400;600;800&display=swap" rel="stylesheet" />
+<meta charset="UTF-8">
+<title>CFG Simplifier</title>
 <style>
-  :root {
-    --bg: #0d0f14;
-    --surface: #13161e;
-    --card: #1a1e2a;
-    --border: #252a38;
-    --accent: #6ee7b7;
-    --accent2: #818cf8;
-    --accent3: #f59e0b;
-    --accent4: #f87171;
-    --text: #e2e8f0;
-    --muted: #64748b;
-    --font-head: 'Syne', sans-serif;
-    --font-mono: 'JetBrains Mono', monospace;
+body { background:#0d0f14;color:#e2e8f0;font-family:monospace;padding:20px;}
+textarea{width:100%;height:150px;background:#111;color:#0f0;padding:10px;}
+button{padding:10px;margin-top:10px;}
+</style>
+</head>
+
+<body>
+
+<h2>CFG Simplifier</h2>
+
+<textarea id="grammarInput">
+S -> aA | B
+A -> a | ε
+B -> b | C
+C -> c
+</textarea>
+
+<br>
+<button onclick="simplify()">Simplify</button>
+
+<pre id="output"></pre>
+
+<script>
+
+// FIX: tokenizer
+function tokenize(rhs){
+  return rhs.split('').filter(c => c.trim() !== '');
+}
+
+function parseGrammar(text){
+  const rules={}, order=[];
+  const lines=text.trim().split('\n').filter(l=>l.trim());
+
+  for(const line of lines){
+    const parts=line.split('->');
+    if(parts.length < 2) continue;
+
+    const lhs = parts[0].trim();
+    const rhss = parts[1].split('|').map(r=>r.trim());
+
+    if(!rules[lhs]){
+      rules[lhs]=[];
+      order.push(lhs);
+    }
+
+    for(let rhs of rhss){
+      if(rhs === 'ε' || rhs === '#' || rhs === 'epsilon'){
+        if(!rules[lhs].includes('ε')) rules[lhs].push('ε');
+      } else {
+        const tokens = tokenize(rhs).join(' ');
+        if(!rules[lhs].includes(tokens)) rules[lhs].push(tokens);
+      }
+    }
   }
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--text); font-family: var(--font-mono); min-height: 100vh; line-height: 1.6; }
-  header { border-bottom: 1px solid var(--border); padding: 1.5rem 2rem; display: flex; align-items: center; gap: 1rem; background: var(--surface); position: sticky; top: 0; z-index: 100; }
-  .logo-badge { background: var(--accent); color: #0d0f14; font-family: var(--font-head); font-weight: 800; font-size: 0.75rem; padding: 4px 10px; border-radius: 4px; letter-spacing: 0.05em; }
-  header h1 { font-family: var(--font-head); font-size: 1.1rem; font-weight: 600; }
-  header p { font-size: 0.72rem; color: var(--muted); margin-left: auto; }
-  .container { max-width: 1100px; margin: 0 auto; padding: 2rem; }
-  .input-panel { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; }
-  .panel-label { font-family: var(--font-head); font-size: 0.7rem; font-weight: 600; letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; margin-bottom: 0.75rem; }
-  .grammar-input { width: 100%; min-height: 140px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--accent); font-family: var(--font-mono); font-size: 0.9rem; padding: 1rem; resize: vertical; outline: none; transition: border-color 0.2s; line-height: 1.8; }
-  .grammar-input:focus { border-color: var(--accent); }
-  .presets { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
-  .preset-btn { background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); font-family: var(--font-mono); font-size: 0.72rem; padding: 5px 12px; cursor: pointer; transition: all 0.2s; }
-  .preset-btn:hover { border-color: var(--accent2); color: var(--accent2); }
-  .actions { display: flex; gap: 0.75rem; margin-top: 1rem; flex-wrap: wrap; }
-  .btn-primary { background: var(--accent); color: #0d0f14; border: none; border-radius: 8px; font-family: var(--font-head); font-weight: 600; font-size: 0.85rem; padding: 10px 24px; cursor: pointer; transition: opacity 0.2s; }
-  .btn-secondary { background: transparent; color: var(--muted); border: 1px solid var(--border); border-radius: 8px; font-family: var(--font-mono); font-size: 0.8rem; padding: 10px 20px; cursor: pointer; transition: all 0.2s; }
-  .pipeline { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
-  .pipe-step { display: flex; align-items: center; gap: 0.4rem; font-size: 0.72rem; color: var(--muted); }
-  .pipe-step.done { color: var(--accent); }
-  .pipe-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); }
-  .pipe-step.done .pipe-dot { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
-  .steps-grid { display: flex; flex-direction: column; gap: 1.25rem; }
-  .step-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; animation: slideIn 0.4s ease; }
+
+  return {rules, start: order[0], order};
+}
+
+function findNullable(rules){
+  const nullable = new Set();
+  let changed = true;
+
+  while(changed){
+    changed = false;
+    for(const [lhs, prods] of Object.entries(rules)){
+      if(nullable.has(lhs)) continue;
+
+      for(const prod of prods){
+        if(prod === 'ε'){
+          nullable.add(lhs);
+          changed = true;
+          break;
+        }
+
+        const syms = prod.split(' ');
+        if(syms.every(s => nullable.has(s))){
+          nullable.add(lhs);
+          changed = true;
+          break;
+        }
+      }
+    }
+  }
+
+  return nullable;
+}
+
+function eliminateNull(g){
+  const {rules, start} = g;
+  const nullable = findNullable(rules);
+  const newRules = {};
+
+  for(const lhs in rules){
+    newRules[lhs] = [];
+
+    for(const prod of rules[lhs]){
+      if(prod === 'ε') continue;
+
+      const syms = prod.split(' ');
+      const count = 1 << syms.length;
+
+      for(let mask = 0; mask < count; mask++){
+        let result = [];
+
+        for(let i = 0; i < syms.length; i++){
+          if(nullable.has(syms[i]) && ((mask >> i) & 1)) continue;
+          result.push(syms[i]);
+        }
+
+        if(result.length){
+          const str = result.join(' ');
+          if(!newRules[lhs].includes(str)){
+            newRules[lhs].push(str);
+          }
+        }
+      }
+    }
+  }
+
+  if(nullable.has(start)){
+    if(!newRules[start]) newRules[start] = [];
+    if(!newRules[start].includes('ε')) newRules[start].push('ε');
+  }
+
+  return {rules: newRules, start};
+}
+
+function simplify(){
+  const text = document.getElementById('grammarInput').value;
+  const g = parseGrammar(text);
+  const g1 = eliminateNull(g);
+
+  let out = "";
+
+  for(const lhs in g1.rules){
+    out += lhs + " -> " + g1.rules[lhs].join(" | ") + "\n";
+  }
+
+  document.getElementById('output').textContent = out;
+}
+
+</script>
+
+</body>
+</html>
