@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>CFG SIMPLIFIER</title>
+<title>CFG Simplifier — Grammar Simplification Tool</title>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@400;600;800&display=swap" rel="stylesheet" />
 <style>
   :root {
@@ -13,6 +13,8 @@
     --border: #252a38;
     --accent: #6ee7b7;
     --accent2: #818cf8;
+    --accent3: #f59e0b;
+    --accent4: #f87171;
     --text: #e2e8f0;
     --muted: #64748b;
     --font-head: 'Syne', sans-serif;
@@ -20,18 +22,25 @@
   }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: var(--font-mono); min-height: 100vh; line-height: 1.6; }
-  header { padding: 3rem 2rem; text-align: center; border-bottom: 1px solid var(--border); background: linear-gradient(to bottom, #13161e, #0d0f14); }
-  h1 { font-family: var(--font-head); font-size: 3rem; font-weight: 800; letter-spacing: -0.05em; color: var(--text); text-transform: uppercase; margin-bottom: 0.5rem; }
-  .subtitle { color: var(--muted); font-size: 0.9rem; font-family: var(--font-head); letter-spacing: 0.1em; }
-  .container { max-width: 1000px; margin: 0 auto; padding: 3rem 1.5rem; }
-  .input-card { background: var(--surface); border: 1px solid var(--border); border-radius: 24px; padding: 2rem; margin-bottom: 3rem; }
-  textarea { width: 100%; height: 220px; background: #080a0f; color: var(--accent); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; font-family: var(--font-mono); font-size: 1rem; outline: none; resize: none; border-left: 4px solid var(--accent2); }
-  .controls { display: flex; gap: 1rem; margin-top: 1.5rem; }
-  button { padding: 1rem 2rem; border-radius: 12px; font-weight: 600; cursor: pointer; border: none; font-family: var(--font-head); transition: 0.3s; text-transform: uppercase; letter-spacing: 0.05em; }
-  .btn-solve { background: var(--accent2); color: #fff; box-shadow: 0 4px 14px rgba(129, 140, 248, 0.4); }
-  .btn-solve:hover { transform: translateY(-2px); filter: brightness(1.1); }
-  .btn-sample { background: var(--card); color: var(--text); border: 1px solid var(--border); }
-  
-  /* Step Cards Matching Your Snippet */
-  .step-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; margin-bottom: 2rem; overflow: hidden; animation: slideUp 0.5s ease-out; }
-  .card-header { padding: 1.25rem 2rem; background:
+  header { border-bottom: 1px solid var(--border); padding: 1.5rem 2rem; display: flex; align-items: center; gap: 1rem; background: var(--surface); position: sticky; top: 0; z-index: 100; }
+  .logo-badge { background: var(--accent); color: #0d0f14; font-family: var(--font-head); font-weight: 800; font-size: 0.75rem; padding: 4px 10px; border-radius: 4px; letter-spacing: 0.05em; }
+  header h1 { font-family: var(--font-head); font-size: 1.1rem; font-weight: 600; }
+  header p { font-size: 0.72rem; color: var(--muted); margin-left: auto; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+  .input-panel { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; }
+  .panel-label { font-family: var(--font-head); font-size: 0.7rem; font-weight: 600; letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; margin-bottom: 0.75rem; }
+  .grammar-input { width: 100%; min-height: 140px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--accent); font-family: var(--font-mono); font-size: 0.9rem; padding: 1rem; resize: vertical; outline: none; transition: border-color 0.2s; line-height: 1.8; }
+  .grammar-input:focus { border-color: var(--accent); }
+  .presets { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
+  .preset-btn { background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); font-family: var(--font-mono); font-size: 0.72rem; padding: 5px 12px; cursor: pointer; transition: all 0.2s; }
+  .preset-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+  .actions { display: flex; gap: 0.75rem; margin-top: 1rem; flex-wrap: wrap; }
+  .btn-primary { background: var(--accent); color: #0d0f14; border: none; border-radius: 8px; font-family: var(--font-head); font-weight: 600; font-size: 0.85rem; padding: 10px 24px; cursor: pointer; transition: opacity 0.2s; }
+  .btn-secondary { background: transparent; color: var(--muted); border: 1px solid var(--border); border-radius: 8px; font-family: var(--font-mono); font-size: 0.8rem; padding: 10px 20px; cursor: pointer; transition: all 0.2s; }
+  .pipeline { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .pipe-step { display: flex; align-items: center; gap: 0.4rem; font-size: 0.72rem; color: var(--muted); }
+  .pipe-step.done { color: var(--accent); }
+  .pipe-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); }
+  .pipe-step.done .pipe-dot { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  .steps-grid { display: flex; flex-direction: column; gap: 1.25rem; }
+  .step-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; animation: slideIn 0.4s ease; }
